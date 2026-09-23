@@ -1,10 +1,11 @@
 import { EstadoUsuario, NivelSeguridad, TipoContrato } from "@prisma/client";
 import { hash } from "bcryptjs";
-import type { Request, Response } from "express";
+import type { Request } from "express";
 import { z } from "zod";
 import { ApiError } from "./lib/errors";
 import { prisma } from "./lib/prisma";
 import { publicUserSelect, serializeUser } from "./lib/user";
+import type { AuditResponse, AuditScope } from "./audit";
 
 const fields = {
   nombre: z.string().trim().min(1).max(120),
@@ -33,12 +34,12 @@ async function resolveRelations(rol?: string, departamento?: string | null) {
   return { rolId: role?.id, departamentoId: department?.id };
 }
 
-export async function listUsers(_request: Request, response: Response): Promise<void> {
+export async function listUsers(_request: Request): Promise<AuditResponse> {
   const users = await prisma.usuario.findMany({ select: publicUserSelect, orderBy: { correo: "asc" } });
-  response.json({ users: users.map(serializeUser) });
+  return { status: 200, body: { users: users.map(serializeUser) } };
 }
 
-export async function createUser(request: Request, response: Response): Promise<void> {
+export async function createUser(request: Request, scope: AuditScope): Promise<AuditResponse> {
   const input = createSchema.parse(request.body);
   const { rolId, departamentoId } = await resolveRelations(input.rol, input.departamento);
   const user = await prisma.usuario.create({
@@ -50,10 +51,11 @@ export async function createUser(request: Request, response: Response): Promise<
     },
     select: publicUserSelect
   });
-  response.status(201).json({ user: serializeUser(user) });
+  scope.recurso = `usuarios/${user.id}`;
+  return { status: 201, body: { user: serializeUser(user) } };
 }
 
-export async function updateUser(request: Request, response: Response): Promise<void> {
+export async function updateUser(request: Request): Promise<AuditResponse> {
   const id = idSchema.parse(request.params.id);
   const input = updateSchema.parse(request.body);
   const exists = await prisma.usuario.findUnique({ where: { id }, select: { id: true } });
@@ -70,5 +72,5 @@ export async function updateUser(request: Request, response: Response): Promise<
     },
     select: publicUserSelect
   });
-  response.json({ user: serializeUser(user) });
+  return { status: 200, body: { user: serializeUser(user) } };
 }

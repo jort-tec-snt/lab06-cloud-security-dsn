@@ -2,6 +2,7 @@ import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest } from "../auth";
 import { ApiError } from "../lib/errors";
 import { prisma } from "../lib/prisma";
+import type { AuditResponse } from "../audit";
 
 export type RbacDecision = {
   permitido: boolean;
@@ -65,8 +66,8 @@ export function requirePermission(permission: string) {
   return requireAllPermissions([permission]);
 }
 
-export async function myPermissions(request: AuthenticatedRequest, response: Response): Promise<void> {
+export async function myPermissions(request: AuthenticatedRequest): Promise<AuditResponse> {
   if (!request.auth) throw new ApiError(401, "UNAUTHORIZED", "No autorizado");
   const { rol, permisos } = await getEffectivePermissions(request.auth.user.id);
-  response.json({ rol, permisos });
+  return { status: 200, body: { rol, permisos } };
 }

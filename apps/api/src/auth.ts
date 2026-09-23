@@ -6,6 +6,7 @@ import { z } from "zod";
 import { prisma } from "./lib/prisma";
 import { ApiError } from "./lib/errors";
 import { publicUserSelect, serializeUser, type PublicUser } from "./lib/user";
+import type { AuditScope, AuditResponse } from "./audit";
 
 const loginSchema = z.strictObject({
   correo: z.email().max(254).transform(value => value.toLowerCase()),
@@ -44,33 +45,45 @@ export function issueToken(user: PublicUser): string {
 
 export type AuthenticatedRequest = Request & { auth?: { user: PublicUser; token: JwtPayload & z.infer<typeof claimsSchema> } };
 
-export async function authenticate(request: AuthenticatedRequest, _response: Response, next: NextFunction): Promise<void> {
-  try {
+export class AuthenticationError extends ApiError {
+  constructor(public readonly reason: string, public readonly usuarioId: string | null = null) {
+    super(401, "UNAUTHORIZED", "No autorizado");
+  }
+}
+
+export async function authenticateRequest(request: AuthenticatedRequest): Promise<NonNullable<AuthenticatedRequest["auth"]>> {
     const match = /^Bearer ([^\s]+)$/i.exec(request.header("authorization") ?? "");
-    if (!match?.[1]) throw new ApiError(401, "UNAUTHORIZED", "No autorizado");
+    if (!match?.[1]) throw new AuthenticationError("TOKEN_AUSENTE");
     let decoded: JwtPayload | string;
     try {
       decoded = jwt.verify(match[1], authConfig().JWT_SECRET, {
         algorithms: ["HS256"], issuer: "securedocs-api", audience: "securedocs-api"
       });
     } catch {
-      throw new ApiError(401, "UNAUTHORIZED", "No autorizado");
+      throw new AuthenticationError("TOKEN_INVALIDO");
     }
     const parsed = claimsSchema.safeParse(decoded);
-    if (!parsed.success) throw new ApiError(401, "UNAUTHORIZED", "No autorizado");
+    if (!parsed.success) throw new AuthenticationError("TOKEN_INVALIDO");
     const [revoked, user] = await Promise.all([
       prisma.tokenRevocado.findUnique({ where: { jti: parsed.data.jti }, select: { jti: true } }),
       prisma.usuario.findUnique({ where: { id: parsed.data.id }, select: publicUserSelect })
     ]);
-    if (revoked || !user || user.estado !== "ACTIVO") throw new ApiError(401, "UNAUTHORIZED", "No autorizado");
-    request.auth = { user, token: parsed.data };
+    if (revoked) throw new AuthenticationError("TOKEN_REVOCADO", parsed.data.id);
+    if (!user) throw new AuthenticationError("USUARIO_INEXISTENTE");
+    if (user.estado !== "ACTIVO") throw new AuthenticationError(`USUARIO_${user.estado}`, user.id);
+    return { user, token: parsed.data };
+}
+
+export async function authenticate(request: AuthenticatedRequest, _response: Response, next: NextFunction): Promise<void> {
+  try {
+    request.auth = await authenticateRequest(request);
     next();
   } catch (error) {
     next(error);
   }
 }
 
-export async function login(request: Request, response: Response): Promise<void> {
+export async function login(request: Request, scope: AuditScope): Promise<AuditResponse> {
   const input = loginSchema.parse(request.body);
   const user = await prisma.usuario.findUnique({
     where: { correo: input.correo },
@@ -79,19 +92,20 @@ export async function login(request: Request, response: Response): Promise<void>
   if (!user || !(await compare(input.password, user.passwordHash)) || user.estado !== "ACTIVO") {
     throw new ApiError(401, "INVALID_CREDENTIALS", "Credenciales inválidas");
   }
-  response.json({ accessToken: issueToken(user), tokenType: "Bearer", user: serializeUser(user) });
+  scope.usuarioId = user.id;
+  return { status: 200, body: { accessToken: issueToken(user), tokenType: "Bearer", user: serializeUser(user) } };
 }
 
-export function me(request: AuthenticatedRequest, response: Response): void {
-  response.json({ user: serializeUser(request.auth!.user) });
+export function me(request: AuthenticatedRequest): AuditResponse {
+  return { status: 200, body: { user: serializeUser(request.auth!.user) } };
 }
 
-export async function logout(request: AuthenticatedRequest, response: Response): Promise<void> {
+export async function logout(request: AuthenticatedRequest): Promise<AuditResponse> {
   const token = request.auth!.token;
   await prisma.tokenRevocado.upsert({
     where: { jti: token.jti },
     update: {},
     create: { jti: token.jti, usuarioId: request.auth!.user.id, expiresAt: new Date(token.exp * 1000) }
   });
-  response.status(204).send();
+  return { status: 204 };
 }

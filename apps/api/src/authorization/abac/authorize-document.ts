@@ -2,7 +2,7 @@ import type { Documento } from "@prisma/client";
 import type { AuthenticatedRequest } from "../../auth";
 import { ApiError } from "../../lib/errors";
 import { evaluateAbac } from "./index";
-import { serverEnvironmentAdapter, type EnvironmentAdapter } from "./environment";
+import { documentEnvironmentAdapter, type EnvironmentAdapter } from "./environment";
 import type { AbacDecision, DocumentAction } from "./types";
 
 /**
@@ -41,4 +41,4 @@ export function createDocumentAuthorizer(environmentAdapter: EnvironmentAdapter)
   };
 }
 
-export const authorizeLoadedDocument = createDocumentAuthorizer(serverEnvironmentAdapter);
+export const authorizeLoadedDocument = createDocumentAuthorizer(documentEnvironmentAdapter);

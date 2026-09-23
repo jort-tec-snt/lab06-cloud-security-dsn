@@ -20,6 +20,7 @@ export type AbacDocument = {
 };
 
 export type DocumentAction =
+  | "CREAR_DOCUMENTO"
   | "CONSULTAR_DOCUMENTO"
   | "MODIFICAR_DOCUMENTO"
   | "ELIMINAR_DOCUMENTO"

@@ -17,3 +17,5 @@ Ejecuta `npm --prefix apps/api run prisma:seed` y `npm --prefix apps/api test` c
 | Endpoint protegido | `GET /auth/permissions` sin JWT | `UNAUTHORIZED` | 401 | Respuesta JSON |
 
 Para evidencia manual, inicia la API y usa el token devuelto por `POST /auth/login` con las cuentas semilla `admin@securedocs.test` y `empleado@securedocs.test`. Envía `Authorization: Bearer <accessToken>` a `GET /usuarios`; guarda el estado HTTP y el JSON de cada respuesta. Las credenciales semilla son exclusivamente locales y están descritas en el README.
+
+Los permisos de documentos y `VER_AUDITORIA` ya se aplican en las rutas HTTP; consulta la [matriz de 17 casos](document-authorization.md). Los rechazos RBAC de esas rutas quedan auditados con el permiso faltante.

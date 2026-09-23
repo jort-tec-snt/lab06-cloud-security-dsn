@@ -1,6 +1,6 @@
 # SecureDocs
 
-SecureDocs es el proyecto del laboratorio de Cloud Security. Incluye autenticación JWT, revocación persistida, autorización RBAC centralizada, gestión de usuarios y un motor ABAC centralizado sobre PostgreSQL. El motor ABAC se aplicará al CRUD de documentos en la siguiente etapa; aún no existen rutas de documentos. El frontend queda para una etapa posterior.
+SecureDocs es el proyecto del laboratorio de Cloud Security. Incluye autenticación JWT, revocación persistida, RBAC y ABAC centralizados sobre PostgreSQL, CRUD y aprobación de documentos, y auditoría de accesos. El frontend queda para una etapa posterior.
 
 ## Tecnologías
 
@@ -78,6 +78,7 @@ Una respuesta saludable tiene código HTTP `200`, `status: "ok"` y `database: "c
 | `JWT_SECRET` | Clave de firma HS256; el valor de ejemplo es público y solo local. |
 | `JWT_EXPIRES_IN` | Duración del JWT, por ejemplo `1h` (`s`, `m`, `h`, `d`). |
 | `CORS_ORIGIN` | Único origen web permitido por CORS; ejemplo `http://localhost:5173`. |
+| `DEMO_MODE` | `false` por defecto; habilita cabeceras de demostración solo fuera de producción. |
 
 Todas las cuentas semilla usan `SecureDocs-Demo-Only-2026!`, **solo para desarrollo local**. Para probar el acceso, usa `admin@securedocs.test`; `inactivo@securedocs.test` y `suspendido@securedocs.test` sirven para comprobar el rechazo. Las demás cuentas figuran en el [modelo de datos](docs/architecture/database-model.md). Estas credenciales públicas no deben usarse en despliegues.
 
@@ -108,7 +109,27 @@ La [arquitectura RBAC](docs/architecture/rbac.md) contiene el flujo y la matriz 
 
 ## ABAC
 
-`evaluateAbac(context)` evalúa usuario, documento, acción y entorno contra las ocho políticas activas de PostgreSQL. Devuelve una decisión detallada y todas las evaluaciones aplicables. `authorizeLoadedDocument` prepara su uso después de autenticación, RBAC y carga del documento. No se expone un endpoint ABAC. La ubicación y el dispositivo del adaptador de servidor permanecen desconocidos hasta conectar fuentes verificadas; los valores inyectados se usan solo en pruebas. Consulta la [arquitectura ABAC](docs/architecture/abac.md) y la [matriz de pruebas](docs/testing/abac.md).
+`evaluateAbac(context)` evalúa usuario, documento, acción y entorno contra las ocho políticas activas de PostgreSQL. Las rutas llaman a `authorizeLoadedDocument` después de autenticar, verificar RBAC y cargar o construir el recurso. No existe un endpoint ABAC público. Consulta la [arquitectura ABAC](docs/architecture/abac.md) y el [flujo integrado](docs/architecture/authorization-flow.md).
+
+## Documentos y auditoría
+
+Todas las rutas siguientes requieren `Authorization: Bearer <accessToken>`. Un rechazo RBAC devuelve `403 RBAC_DENIED`; uno ABAC devuelve `403 ABAC_DENIED` con la política fallida. Cada intento queda auditado, incluidos rechazos de autenticación. Un ID inexistente devuelve `404` seguro.
+
+| Endpoint | Permiso RBAC | Resultado |
+| --- | --- | --- |
+| `GET /documentos` | `CONSULTAR_DOCUMENTO` | Lista solo documentos autorizados; no expone metadatos denegados. |
+| `GET /documentos/:id` | `CONSULTAR_DOCUMENTO` | Consulta un documento autorizado. |
+| `POST /documentos` | `CREAR_DOCUMENTO` | Crea un documento `PENDIENTE` con propietario igual al usuario autenticado. |
+| `PUT /documentos/:id` | `MODIFICAR_DOCUMENTO` | Modifica campos permitidos tras evaluar ABAC sobre el estado actual y el candidato. |
+| `DELETE /documentos/:id` | `ELIMINAR_DOCUMENTO` | Elimina; devuelve `204`. |
+| `POST /documentos/:id/aprobar` | `APROBAR_DOCUMENTO` | Cambia `PENDIENTE` a `PUBLICADO`. |
+| `GET /auditoria` | `VER_AUDITORIA` | Consulta registros; no hay API de modificación ni eliminación. |
+
+`POST /documentos` exige `titulo`, `descripcion`, `departamentoId` (UUID), `nivelConfidencialidad` (`NIVEL_1` a `NIVEL_5`) y `pais` en mayúsculas, por ejemplo `PERU`. `PUT` acepta un subconjunto no vacío de esos campos. Zod rechaza campos adicionales como `propietarioId` y `estado`. La aprobación acepta un objeto JSON vacío. `GET /auditoria` admite filtros opcionales `resultado` (`PERMITIDO`, `DENEGADO`, `ERROR`), `usuario` (UUID), `accion`, `limite` (1–100, predeterminado 20) y `pagina` (1–10000, predeterminada 1); devuelve `auditorias`, `total`, `limite` y `pagina`.
+
+Para desarrollo local, configura `DEMO_MODE=true` y mantén `NODE_ENV=development`. Puedes probar una consulta sensible con `X-Demo-Hour: 11`, `X-Demo-Location: PERU` y `X-Demo-Device: CORPORATIVO`. La hora es de Lima (0–23); ubicación admite un nombre de país en mayúsculas y dispositivo solo `CORPORATIVO` o `PERSONAL`. El futuro frontend mostrará explícitamente que se está usando el modo demostración. **No utilices estas cabeceras como pruebas de confianza en producción:** siempre se ignoran cuando `NODE_ENV=production`. Fuera de DEMO_MODE se usan el reloj del servidor, la IP de Express y señales de ubicación o dispositivo verificadas o desconocidas según el adaptador. Una señal de dispositivo desconocida deniega consultas de nivel 4 o 5.
+
+La [matriz de autorización](docs/testing/document-authorization.md) contiene los 17 escenarios HTTP y futuras evidencias.
 
 ## Scripts de la API
 
@@ -122,7 +143,7 @@ Ejecuta cada script desde la raíz con `npm --prefix apps/api run <script>`:
 | `prisma:generate` | Regenera Prisma Client. |
 | `prisma:migrate` | Aplica las migraciones pendientes con `prisma migrate deploy`. |
 | `prisma:seed` | Carga o actualiza el catálogo y los datos demostrativos. |
-| `test` | Ejecuta pruebas de autenticación, RBAC y ABAC contra PostgreSQL local ya migrado y poblado. |
+| `test` | Ejecuta pruebas HTTP de autenticación, RBAC, ABAC, documentos y auditoría contra PostgreSQL local ya migrado y poblado. |
 
 ## Seguridad de los datos demostrativos
 

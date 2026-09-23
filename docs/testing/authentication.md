@@ -13,4 +13,4 @@ Preparación: iniciar PostgreSQL, aplicar migraciones y ejecutar el seed. Las cu
 | Token válido | `GET /auth/me` con el JWT del login | `200`, datos vigentes del usuario, sin hash |
 | Logout y revocación | `POST /auth/logout` con JWT válido; reutilizar JWT en `/auth/me` | `204` al cerrar sesión y luego `401`; la fila `tokens_revocados` permanece en PostgreSQL |
 
-El middleware también verifica firma, vencimiento y que el usuario siga `ACTIVO` en la base. Los endpoints de usuarios requieren autenticación; la restricción por permiso `GESTIONAR_USUARIOS` se añadirá con el middleware RBAC de la siguiente etapa.
+El middleware también verifica firma, vencimiento y que el usuario siga `ACTIVO` en la base. Los endpoints de usuarios ya exigen los permisos RBAC correspondientes. Los intentos a documentos y a `GET /auditoria`, incluidos rechazos AUTH, generan registros de auditoría.
