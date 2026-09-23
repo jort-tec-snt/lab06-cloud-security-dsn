@@ -1,6 +1,6 @@
 # SecureDocs
 
-SecureDocs es el proyecto del laboratorio de Cloud Security. Incluye autenticación JWT, revocación persistida, RBAC y ABAC centralizados sobre PostgreSQL, CRUD y aprobación de documentos, y auditoría de accesos. El frontend queda para una etapa posterior.
+SecureDocs es el proyecto del laboratorio de Cloud Security. Incluye autenticación JWT, revocación persistida, RBAC y ABAC centralizados sobre PostgreSQL, CRUD y aprobación de documentos, auditoría de accesos y una interfaz React conectada a la API.
 
 ## Tecnologías
 
@@ -8,6 +8,7 @@ SecureDocs es el proyecto del laboratorio de Cloud Security. Incluye autenticaci
 - PostgreSQL 16.
 - Prisma ORM, bcrypt, Zod, Helmet y CORS.
 - Docker Compose para la base de datos local.
+- React 19, Vite, TypeScript y React Router para la interfaz web.
 
 ## Estructura
 
@@ -16,7 +17,7 @@ apps/
 ├── api/
 │   ├── prisma/          # Esquema, migraciones y datos semilla
 │   └── src/             # API Express, autenticación, usuarios y autorización
-└── web/                 # Reservado; fuera del alcance de esta etapa
+└── web/                 # Frontend React + Vite
 docs/
 └── architecture/        # Modelo y decisiones de arquitectura
 docker-compose.yml       # PostgreSQL y servicios locales
@@ -57,14 +58,29 @@ Requisitos: Node.js 22+, npm y Docker con el complemento Compose. Desde la raíz
    npm --prefix apps/api run prisma:seed
    ```
 
-6. Inicia la API y, en otra terminal, consulta el health check.
+6. Instala las dependencias del frontend.
+
+   ```bash
+   npm --prefix apps/web install
+   ```
+
+7. Inicia la API y el frontend en terminales separadas.
 
    ```bash
    npm --prefix apps/api run dev
+   npm --prefix apps/web run dev
    curl --fail http://localhost:3000/health
    ```
 
-Una respuesta saludable tiene código HTTP `200`, `status: "ok"` y `database: "connected"`. Si PostgreSQL no está accesible, el endpoint responde HTTP `503` y estado degradado.
+Abre `http://localhost:5173`. Una respuesta saludable de la API tiene código HTTP `200`, `status: "ok"` y `database: "connected"`. Si PostgreSQL no está accesible, el endpoint responde HTTP `503` y estado degradado.
+
+También puedes iniciar los tres servicios con Docker Compose:
+
+```bash
+docker compose up
+```
+
+La API queda en `http://localhost:3000` y el frontend en `http://localhost:5173`. Docker conserva los bind mounts del código, pero instala las dependencias de cada aplicación en un volumen `node_modules` separado del host. La API genera Prisma Client dentro del contenedor Alpine. El primer arranque puede tardar mientras `npm ci` descarga los paquetes.
 
 ## Configuración y autenticación
 
@@ -79,6 +95,9 @@ Una respuesta saludable tiene código HTTP `200`, `status: "ok"` y `database: "c
 | `JWT_EXPIRES_IN` | Duración del JWT, por ejemplo `1h` (`s`, `m`, `h`, `d`). |
 | `CORS_ORIGIN` | Único origen web permitido por CORS; ejemplo `http://localhost:5173`. |
 | `DEMO_MODE` | `false` por defecto; habilita cabeceras de demostración solo fuera de producción. |
+| `VITE_API_URL` | URL pública de la API consumida por el navegador; predeterminado `http://localhost:3000`. |
+| `VITE_DEMO_MODE` | Muestra y activa controles locales de hora, ubicación y dispositivo cuando vale `true` durante desarrollo. |
+| `WEB_PORT` | Puerto publicado por Docker Compose para el frontend; predeterminado `5173`. |
 
 Todas las cuentas semilla usan `SecureDocs-Demo-Only-2026!`, **solo para desarrollo local**. Para probar el acceso, usa `admin@securedocs.test`; `inactivo@securedocs.test` y `suspendido@securedocs.test` sirven para comprobar el rechazo. Las demás cuentas figuran en el [modelo de datos](docs/architecture/database-model.md). Estas credenciales públicas no deben usarse en despliegues.
 
@@ -88,7 +107,7 @@ curl -sS -X POST http://localhost:3000/auth/login \
   -d '{"correo":"admin@securedocs.test","password":"SecureDocs-Demo-Only-2026!"}'
 ```
 
-El resultado contiene `accessToken`. Envíalo como `Authorization: Bearer <accessToken>` a `GET /auth/me`, `GET /auth/permissions`, `POST /auth/logout` y `/usuarios`. Logout guarda el `jti` revocado en PostgreSQL: el mismo token devuelve `401` desde ese momento. `GET /auth/permissions` devuelve el rol y los códigos de permisos efectivos del usuario autenticado, consultados desde PostgreSQL.
+El resultado contiene `accessToken`. Envíalo como `Authorization: Bearer <accessToken>` a `GET /auth/me`, `GET /auth/permissions`, `POST /auth/logout` y `/usuarios`. El frontend conserva ese JWT solamente en `sessionStorage`; un `401` limpia la sesión local y vuelve al login. Logout guarda el `jti` revocado en PostgreSQL: el mismo token devuelve `401` desde ese momento. `GET /auth/permissions` devuelve el rol y los códigos de permisos efectivos del usuario autenticado, consultados desde PostgreSQL.
 
 ## Usuarios
 
@@ -125,9 +144,25 @@ Todas las rutas siguientes requieren `Authorization: Bearer <accessToken>`. Un r
 | `POST /documentos/:id/aprobar` | `APROBAR_DOCUMENTO` | Cambia `PENDIENTE` a `PUBLICADO`. |
 | `GET /auditoria` | `VER_AUDITORIA` | Consulta registros; no hay API de modificación ni eliminación. |
 
+`GET /catalogos/departamentos` requiere un JWT válido y devuelve únicamente `id` y `nombre`. Cada intento se registra en la auditoría central con la acción `CONSULTAR_DEPARTAMENTOS` y el recurso `catalogos/departamentos`, incluidos los rechazos por token ausente o inválido. La interfaz lo usa para enviar el UUID correcto en formularios documentales.
+
 `POST /documentos` exige `titulo`, `descripcion`, `departamentoId` (UUID), `nivelConfidencialidad` (`NIVEL_1` a `NIVEL_5`) y `pais` en mayúsculas, por ejemplo `PERU`. `PUT` acepta un subconjunto no vacío de esos campos. Zod rechaza campos adicionales como `propietarioId` y `estado`. La aprobación acepta un objeto JSON vacío. `GET /auditoria` admite filtros opcionales `resultado` (`PERMITIDO`, `DENEGADO`, `ERROR`), `usuario` (UUID), `accion`, `limite` (1–100, predeterminado 20) y `pagina` (1–10000, predeterminada 1); devuelve `auditorias`, `total`, `limite` y `pagina`.
 
-Para desarrollo local, configura `DEMO_MODE=true` y mantén `NODE_ENV=development`. Puedes probar una consulta sensible con `X-Demo-Hour: 11`, `X-Demo-Location: PERU` y `X-Demo-Device: CORPORATIVO`. La hora es de Lima (0–23); ubicación admite un nombre de país en mayúsculas y dispositivo solo `CORPORATIVO` o `PERSONAL`. El futuro frontend mostrará explícitamente que se está usando el modo demostración. **No utilices estas cabeceras como pruebas de confianza en producción:** siempre se ignoran cuando `NODE_ENV=production`. Fuera de DEMO_MODE se usan el reloj del servidor, la IP de Express y señales de ubicación o dispositivo verificadas o desconocidas según el adaptador. Una señal de dispositivo desconocida deniega consultas de nivel 4 o 5.
+Para desarrollo local, configura `DEMO_MODE=true`, `VITE_DEMO_MODE=true` y mantén `NODE_ENV=development`. Reinicia ambos servidores después de cambiar las variables. El frontend mostrará la franja `MODO DEMOSTRACIÓN - SOLO DESARROLLO LOCAL` y enviará `X-Demo-Hour`, `X-Demo-Location` y `X-Demo-Device`. La hora es de Lima (0–23); ubicación admite un nombre de país en mayúsculas y dispositivo solo `CORPORATIVO` o `PERSONAL`.
+
+Los controles web solo existen cuando Vite ejecuta una compilación de desarrollo y `VITE_DEMO_MODE=true`. La API ignora siempre esas cabeceras cuando `NODE_ENV=production`; para que tengan efecto local, también necesita `DEMO_MODE=true`. La ubicación se muestra y registra como contexto, pero la política `PAIS_PERMITIDO` compara `usuario.pais` con `documento.pais` y no usa esa selección como sustituto. Fuera de `DEMO_MODE` se usan el reloj del servidor, la IP de Express y señales verificadas o desconocidas según el adaptador. Una señal de dispositivo desconocida deniega consultas de nivel 4 o 5.
+
+## Scripts del frontend
+
+Ejecuta desde la raíz con `npm --prefix apps/web run <script>`:
+
+| Script | Uso |
+| --- | --- |
+| `dev` | Inicia Vite en `0.0.0.0:5173`. |
+| `build` | Valida TypeScript y genera el bundle de producción. |
+| `preview` | Sirve localmente el bundle generado. |
+
+La interfaz ofrece login, resumen del usuario, documentos, gestión de usuarios, inspector RBAC y auditoría de solo lectura. Los botones operativos envían la solicitud a la API y muestran su resultado real. La ruta de documentos incluye una consulta por UUID para preparar capturas de casos permitidos o denegados sin simular el veredicto.
 
 La [matriz de autorización](docs/testing/document-authorization.md) contiene los 17 escenarios HTTP y futuras evidencias.
 

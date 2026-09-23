@@ -7,6 +7,7 @@ import { errorHandler } from "./lib/errors";
 import { myPermissions } from "./authorization/rbac";
 import { auditedRoute } from "./audit";
 import { approveDocument, createDocument, deleteDocument, getDocument, listAudit, listDocuments, updateDocument } from "./documents";
+import { listDepartments } from "./catalogs";
 
 export type DatabaseCheck = () => Promise<void>;
 
@@ -45,6 +46,7 @@ export function createApp(checkDatabase: DatabaseCheck): Express {
   app.get("/auth/me", auditedRoute({ accion: "CONSULTAR_SESION", recurso: () => "auth/me", auth: true, successReason: "AUTH: válida" }, me));
   app.get("/auth/permissions", auditedRoute({ accion: "CONSULTAR_PERMISOS", recurso: () => "auth/permissions", auth: true, successReason: "AUTH: válida; RBAC: permisos consultados" }, myPermissions));
   app.post("/auth/logout", auditedRoute({ accion: "CERRAR_SESION", recurso: () => "auth/logout", auth: true, successReason: "AUTH: sesión revocada" }, logout));
+  app.get("/catalogos/departamentos", auditedRoute({ accion: "CONSULTAR_DEPARTAMENTOS", recurso: () => "catalogos/departamentos", auth: true, successReason: "AUTH: válida; catálogo no sensible consultado" }, listDepartments));
   app.get("/usuarios", auditedRoute({ accion: "CONSULTAR_USUARIOS", recurso: () => "usuarios", auth: true, permissions: ["GESTIONAR_USUARIOS"], successReason: "AUTH: válida; RBAC: permiso concedido" }, listUsers));
   app.post("/usuarios", auditedRoute({ accion: "CREAR_USUARIO", recurso: () => "usuarios", auth: true, permissions: ["GESTIONAR_USUARIOS", "ASIGNAR_ROLES"], successReason: "AUTH: válida; RBAC: permisos concedidos" }, createUser));
   app.put("/usuarios/:id", auditedRoute({ accion: "MODIFICAR_USUARIO", recurso: request => `usuarios/${request.params.id}`, auth: true,

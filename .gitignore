@@ -30,6 +30,7 @@ temp/
 dist/
 build/
 .vite/
+*.tsbuildinfo
 
 # Docker
 docker-compose.override.yml

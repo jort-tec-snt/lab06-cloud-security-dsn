@@ -2,17 +2,19 @@ services:
   api:
     image: node:22-alpine
     working_dir: /workspace
-    command: ["npm", "run", "dev"]
+    command: ["sh", "-c", "npm ci && npx prisma generate && exec npm run dev"]
     ports:
       - "${API_PORT:-3000}:3000"
     volumes:
       - ./apps/api:/workspace
+      - api_node_modules:/workspace/node_modules
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       DATABASE_URL: postgresql://${POSTGRES_USER:-securedocs_dev}:${POSTGRES_PASSWORD:-change_me_local_only}@postgres:5432/${POSTGRES_DB:-securedocs_dev}
       JWT_SECRET: ${JWT_SECRET:-securedocs-local-example-secret-change-before-any-deployment-2026}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      DEMO_MODE: ${DEMO_MODE:-false}
     depends_on:
       postgres:
         condition: service_healthy
@@ -20,13 +22,16 @@ services:
   web:
     image: node:22-alpine
     working_dir: /workspace
-    command: ["node", "-e", "setInterval(() => {}, 1000)"]
+    command: ["sh", "-c", "npm ci && exec npm run dev -- --host 0.0.0.0"]
     ports:
       - "${WEB_PORT:-5173}:5173"
     volumes:
       - ./apps/web:/workspace
+      - web_node_modules:/workspace/node_modules
     environment:
       NODE_ENV: ${NODE_ENV:-development}
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+      VITE_DEMO_MODE: ${VITE_DEMO_MODE:-false}
     depends_on:
       - api
 
@@ -50,3 +55,5 @@ services:
 
 volumes:
   postgres_data:
+  api_node_modules:
+  web_node_modules:
