@@ -1,7 +1,9 @@
 import { createApp } from "./app";
 import { prisma } from "./lib/prisma";
+import { authConfig } from "./auth";
 
 const port = Number(process.env.API_PORT ?? 3000);
+authConfig();
 
 const app = createApp(async () => {
   await prisma.$queryRaw`SELECT 1`;

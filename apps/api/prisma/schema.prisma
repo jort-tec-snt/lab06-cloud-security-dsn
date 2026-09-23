@@ -99,12 +99,25 @@ model Usuario {
   departamento    Departamento?   @relation(fields: [departamentoId], references: [id], onDelete: SetNull)
   documentos      Documento[]     @relation("PropietarioDocumentos")
   auditorias      Auditoria[]
+  tokensRevocados TokenRevocado[]
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
   @@index([rolId])
   @@index([departamentoId])
   @@map("usuarios")
+}
+
+model TokenRevocado {
+  jti        String   @id @db.Uuid
+  usuarioId  String   @db.Uuid @map("usuario_id")
+  expiresAt  DateTime @map("expires_at")
+  revokedAt  DateTime @default(now()) @map("revoked_at")
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([expiresAt])
+  @@map("tokens_revocados")
 }
 
 model Documento {

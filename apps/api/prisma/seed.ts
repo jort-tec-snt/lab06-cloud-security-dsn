@@ -98,15 +98,15 @@ async function main(): Promise<void> {
 
   const passwordHash = await hash(DEMO_PASSWORD, 12);
   const users = [
-    ["Ada Administradora", "admin@securedocs.test", "ADMINISTRADOR", "TECNOLOGIA", NivelSeguridad.NIVEL_5, "PE", TipoContrato.INDEFINIDO, EstadoUsuario.ACTIVO],
-    ["Gabriela Gerente", "gerente@securedocs.test", "GERENTE", "FINANZAS", NivelSeguridad.NIVEL_4, "PE", TipoContrato.INDEFINIDO, EstadoUsuario.ACTIVO],
-    ["Sergio Supervisor", "supervisor@securedocs.test", "SUPERVISOR", "RRHH", NivelSeguridad.NIVEL_3, "PE", TipoContrato.INDEFINIDO, EstadoUsuario.ACTIVO],
-    ["Elena Empleada", "empleado@securedocs.test", "EMPLEADO", "TECNOLOGIA", NivelSeguridad.NIVEL_2, "PE", TipoContrato.TEMPORAL, EstadoUsuario.ACTIVO],
-    ["Augusto Auditor", "auditor@securedocs.test", "AUDITOR", "FINANZAS", NivelSeguridad.NIVEL_5, "PE", TipoContrato.CONSULTOR, EstadoUsuario.ACTIVO],
-    ["Ines Invitada", "invitado@securedocs.test", "INVITADO", "TECNOLOGIA", NivelSeguridad.NIVEL_1, "PE", TipoContrato.EXTERNO, EstadoUsuario.ACTIVO],
-    ["Ivan Inactivo", "inactivo@securedocs.test", "EMPLEADO", "RRHH", NivelSeguridad.NIVEL_2, "PE", TipoContrato.TEMPORAL, EstadoUsuario.INACTIVO],
-    ["Externa Invitada", "externo@partner.test", "INVITADO", null, NivelSeguridad.NIVEL_1, "CL", TipoContrato.EXTERNO, EstadoUsuario.ACTIVO],
-    ["Susana Suspendida", "suspendido@securedocs.test", "EMPLEADO", "TECNOLOGIA", NivelSeguridad.NIVEL_2, "PE", TipoContrato.TEMPORAL, EstadoUsuario.SUSPENDIDO]
+    ["Ada Administradora", "admin@securedocs.test", "ADMINISTRADOR", "TECNOLOGIA", NivelSeguridad.NIVEL_5, "PERU", TipoContrato.INDEFINIDO, EstadoUsuario.ACTIVO],
+    ["Gabriela Gerente", "gerente@securedocs.test", "GERENTE", "FINANZAS", NivelSeguridad.NIVEL_4, "PERU", TipoContrato.INDEFINIDO, EstadoUsuario.ACTIVO],
+    ["Sergio Supervisor", "supervisor@securedocs.test", "SUPERVISOR", "RRHH", NivelSeguridad.NIVEL_3, "PERU", TipoContrato.INDEFINIDO, EstadoUsuario.ACTIVO],
+    ["Elena Empleada", "empleado@securedocs.test", "EMPLEADO", "TECNOLOGIA", NivelSeguridad.NIVEL_2, "PERU", TipoContrato.TEMPORAL, EstadoUsuario.ACTIVO],
+    ["Augusto Auditor", "auditor@securedocs.test", "AUDITOR", "FINANZAS", NivelSeguridad.NIVEL_5, "PERU", TipoContrato.CONSULTOR, EstadoUsuario.ACTIVO],
+    ["Ines Invitada", "invitado@securedocs.test", "INVITADO", "TECNOLOGIA", NivelSeguridad.NIVEL_1, "PERU", TipoContrato.EXTERNO, EstadoUsuario.ACTIVO],
+    ["Ivan Inactivo", "inactivo@securedocs.test", "EMPLEADO", "RRHH", NivelSeguridad.NIVEL_2, "PERU", TipoContrato.TEMPORAL, EstadoUsuario.INACTIVO],
+    ["Externa Invitada", "externo@partner.test", "INVITADO", null, NivelSeguridad.NIVEL_1, "CHILE", TipoContrato.EXTERNO, EstadoUsuario.ACTIVO],
+    ["Susana Suspendida", "suspendido@securedocs.test", "EMPLEADO", "TECNOLOGIA", NivelSeguridad.NIVEL_2, "PERU", TipoContrato.TEMPORAL, EstadoUsuario.SUSPENDIDO]
   ] as const;
 
   const userRecords = new Map<string, { id: string }>();
@@ -124,11 +124,11 @@ async function main(): Promise<void> {
   }
 
   const documents = [
-    ["00000000-0000-4000-8000-000000000001", "Planilla mensual", "Resumen de remuneraciones del mes.", "gerente@securedocs.test", "FINANZAS", NivelSeguridad.NIVEL_5, EstadoDocumento.PUBLICADO, "PE"],
-    ["00000000-0000-4000-8000-000000000002", "Presupuesto anual", "Propuesta presupuestaria pendiente de aprobación.", "gerente@securedocs.test", "FINANZAS", NivelSeguridad.NIVEL_4, EstadoDocumento.PENDIENTE, "PE"],
-    ["00000000-0000-4000-8000-000000000003", "Guía de onboarding", "Proceso de incorporación para personal nuevo.", "supervisor@securedocs.test", "RRHH", NivelSeguridad.NIVEL_2, EstadoDocumento.PUBLICADO, "PE"],
-    ["00000000-0000-4000-8000-000000000004", "Evaluaciones internas", "Lineamientos para evaluaciones de desempeño.", "supervisor@securedocs.test", "RRHH", NivelSeguridad.NIVEL_3, EstadoDocumento.PENDIENTE, "PE"],
-    ["00000000-0000-4000-8000-000000000005", "Manual de herramientas", "Herramientas aprobadas para el trabajo diario.", "empleado@securedocs.test", "TECNOLOGIA", NivelSeguridad.NIVEL_1, EstadoDocumento.PUBLICADO, "PE"]
+    ["00000000-0000-4000-8000-000000000001", "Planilla mensual", "Resumen de remuneraciones del mes.", "gerente@securedocs.test", "FINANZAS", NivelSeguridad.NIVEL_5, EstadoDocumento.PUBLICADO, "PERU"],
+    ["00000000-0000-4000-8000-000000000002", "Presupuesto anual", "Propuesta presupuestaria pendiente de aprobación.", "gerente@securedocs.test", "FINANZAS", NivelSeguridad.NIVEL_4, EstadoDocumento.PENDIENTE, "PERU"],
+    ["00000000-0000-4000-8000-000000000003", "Guía de onboarding", "Proceso de incorporación para personal nuevo.", "supervisor@securedocs.test", "RRHH", NivelSeguridad.NIVEL_2, EstadoDocumento.PUBLICADO, "PERU"],
+    ["00000000-0000-4000-8000-000000000004", "Evaluaciones internas", "Lineamientos para evaluaciones de desempeño.", "supervisor@securedocs.test", "RRHH", NivelSeguridad.NIVEL_3, EstadoDocumento.PENDIENTE, "PERU"],
+    ["00000000-0000-4000-8000-000000000005", "Manual de herramientas", "Herramientas aprobadas para el trabajo diario.", "empleado@securedocs.test", "TECNOLOGIA", NivelSeguridad.NIVEL_1, EstadoDocumento.PUBLICADO, "PERU"]
   ] as const;
 
   for (const [id, titulo, descripcion, ownerEmail, departmentName, nivelConfidencialidad, estado, pais] of documents) {

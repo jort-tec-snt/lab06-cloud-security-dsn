@@ -1,12 +1,12 @@
 # SecureDocs
 
-SecureDocs es el proyecto del laboratorio de Cloud Security. Esta etapa incorpora la API técnica en Node.js, TypeScript y Express, junto con persistencia PostgreSQL administrada mediante Prisma. Todavía no incluye frontend, autenticación, autorización efectiva ni endpoints de negocio.
+SecureDocs es el proyecto del laboratorio de Cloud Security. Esta etapa incorpora autenticación JWT, revocación persistida y gestión de usuarios sobre la API Express y PostgreSQL. El motor RBAC/ABAC y el frontend se implementarán en etapas posteriores.
 
 ## Tecnologías
 
 - Node.js 22 o superior, TypeScript y Express 5.
 - PostgreSQL 16.
-- Prisma ORM.
+- Prisma ORM, bcrypt, Zod, Helmet y CORS.
 - Docker Compose para la base de datos local.
 
 ## Estructura
@@ -15,7 +15,7 @@ SecureDocs es el proyecto del laboratorio de Cloud Security. Esta etapa incorpor
 apps/
 ├── api/
 │   ├── prisma/          # Esquema, migraciones y datos semilla
-│   └── src/             # API Express y health check
+│   └── src/             # API Express, autenticación y usuarios
 └── web/                 # Reservado; fuera del alcance de esta etapa
 docs/
 └── architecture/        # Modelo y decisiones de arquitectura
@@ -66,6 +66,37 @@ Requisitos: Node.js 22+, npm y Docker con el complemento Compose. Desde la raíz
 
 Una respuesta saludable tiene código HTTP `200`, `status: "ok"` y `database: "connected"`. Si PostgreSQL no está accesible, el endpoint responde HTTP `503` y estado degradado.
 
+## Configuración y autenticación
+
+`.env.example` contiene valores **exclusivos de desarrollo local**. Copia el archivo a `.env` y reemplaza `JWT_SECRET` por un secreto propio de al menos 32 caracteres antes de cualquier uso fuera del laboratorio. `.env` está ignorado por Git.
+
+| Variable | Uso local |
+| --- | --- |
+| `DATABASE_URL` | Conexión PostgreSQL de la API local. |
+| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT` | Base local de Docker Compose. |
+| `API_PORT` | Puerto HTTP; predeterminado `3000`. |
+| `JWT_SECRET` | Clave de firma HS256; el valor de ejemplo es público y solo local. |
+| `JWT_EXPIRES_IN` | Duración del JWT, por ejemplo `1h` (`s`, `m`, `h`, `d`). |
+| `CORS_ORIGIN` | Único origen web permitido por CORS; ejemplo `http://localhost:5173`. |
+
+Todas las cuentas semilla usan `SecureDocs-Demo-Only-2026!`, **solo para desarrollo local**. Para probar el acceso, usa `admin@securedocs.test`; `inactivo@securedocs.test` y `suspendido@securedocs.test` sirven para comprobar el rechazo. Las demás cuentas figuran en el [modelo de datos](docs/architecture/database-model.md). Estas credenciales públicas no deben usarse en despliegues.
+
+```bash
+curl -sS -X POST http://localhost:3000/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"correo":"admin@securedocs.test","password":"SecureDocs-Demo-Only-2026!"}'
+```
+
+El resultado contiene `accessToken`. Envíalo como `Authorization: Bearer <accessToken>` a `GET /auth/me`, `POST /auth/logout` y `/usuarios`. Logout guarda el `jti` revocado en PostgreSQL: el mismo token devuelve `401` desde ese momento.
+
+## Usuarios
+
+`GET /usuarios` lista usuarios; `POST /usuarios` crea uno; `PUT /usuarios/:id` actualiza campos enviados. Los tres endpoints exigen JWT válido. El cuerpo de creación requiere `nombre`, `correo`, `password`, `rol`, `departamento` (nombre o `null`), `nivelSeguridad`, `pais` (nombre de 2 a 80 letras, con espacios simples; se recortan los extremos y se convierte a mayúsculas, por ejemplo `PERU`), `tipoContrato` y `estado`. `PUT` acepta cualquier subconjunto no vacío de esos campos. La contraseña se almacena como hash bcrypt y nunca se devuelve.
+
+Los valores de `rol` son `ADMINISTRADOR`, `GERENTE`, `SUPERVISOR`, `EMPLEADO`, `AUDITOR`, `INVITADO`; los departamentos semilla son `FINANZAS`, `RRHH`, `TECNOLOGIA`. `nivelSeguridad` admite `NIVEL_1` a `NIVEL_5`; `tipoContrato`, `INDEFINIDO`, `TEMPORAL`, `CONSULTOR`, `EXTERNO`; `estado`, `ACTIVO`, `INACTIVO`, `SUSPENDIDO`.
+
+**Pendiente para la siguiente etapa RBAC:** aplicar de forma centralizada el permiso `GESTIONAR_USUARIOS` a estos endpoints (restricción de administración). Por ahora cualquier usuario autenticado puede invocarlos. No se implementa autorización por rol en los controladores.
+
 ## Scripts de la API
 
 Ejecuta cada script desde la raíz con `npm --prefix apps/api run <script>`:
@@ -78,12 +109,13 @@ Ejecuta cada script desde la raíz con `npm --prefix apps/api run <script>`:
 | `prisma:generate` | Regenera Prisma Client. |
 | `prisma:migrate` | Aplica las migraciones pendientes con `prisma migrate deploy`. |
 | `prisma:seed` | Carga o actualiza el catálogo y los datos demostrativos. |
-| `test` | Ejecuta las pruebas técnicas de la API. |
+| `test` | Ejecuta pruebas HTTP de autenticación contra PostgreSQL local ya migrado y poblado. |
 
 ## Seguridad de los datos demostrativos
 
-Todos los usuarios semilla usan la contraseña `SecureDocs-Demo-Only-2026!`. Es pública, deliberadamente identificada como contraseña de prueba y no debe reutilizarse ni desplegarse en producción. El seed almacena únicamente su hash bcrypt.
+Todos los usuarios semilla usan la contraseña pública de prueba indicada arriba. El seed almacena únicamente su hash bcrypt.
 
 El archivo `.env` está ignorado por Git. No agregues credenciales reales al repositorio; en entornos reales utiliza secretos gestionados y una contraseña distinta para PostgreSQL.
 
 El modelo completo, las relaciones y las cuentas de prueba están documentados en [docs/architecture/database-model.md](docs/architecture/database-model.md).
+Los escenarios de prueba están en [docs/testing/authentication.md](docs/testing/authentication.md).

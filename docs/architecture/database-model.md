@@ -11,6 +11,7 @@ erDiagram
     PERMISO ||--o{ ROL_PERMISO : habilita
     USUARIO ||--o{ DOCUMENTO : posee
     USUARIO o|--o{ AUDITORIA : origina
+    USUARIO ||--o{ TOKEN_REVOCADO : revoca
 
     DEPARTAMENTO {
         uuid id PK
@@ -77,6 +78,12 @@ erDiagram
         string ubicacion
         string dispositivo
     }
+    TOKEN_REVOCADO {
+        uuid jti PK
+        uuid usuario_id FK
+        datetime expires_at
+        datetime revoked_at
+    }
 ```
 
 ## Relaciones
@@ -85,6 +92,7 @@ erDiagram
 - Los roles y permisos tienen una relación muchos-a-muchos explícita mediante `RolPermiso`, que conserva la asignación RBAC como dato auditable.
 - Cada documento tiene un propietario y pertenece a un departamento. Su nivel de confidencialidad utiliza la misma escala de nivel 1 a 5 que el nivel de seguridad del usuario.
 - Una auditoría puede vincularse a un usuario. La relación es opcional para conservar eventos técnicos o históricos aunque el actor no esté disponible.
+- `TokenRevocado` guarda el identificador único (`jti`) de cada JWT cerrado, su usuario y su vencimiento. `authenticate` consulta esta tabla en cada solicitud protegida. No se almacena el JWT completo. Los registros vencidos pueden purgarse posteriormente usando el índice `expires_at`.
 - Las políticas ABAC son un catálogo independiente con código, explicación, estado y configuración JSON. En esta etapa solo se persisten; su evaluación se implementará posteriormente.
 
 ## Catálogos semilla
@@ -117,18 +125,22 @@ Las ocho configuraciones ABAC activas son `NIVEL_SEGURIDAD`, `MISMO_DEPARTAMENTO
 
 El enum `EstadoUsuario` contiene `ACTIVO`, `INACTIVO` y `SUSPENDIDO`.
 
+Los campos `pais` de usuarios y documentos guardan nombres normalizados en mayúsculas. Los usuarios y documentos de prueba de Perú usan `PERU`; la invitada externa usa `CHILE`.
+
 ## Usuarios de prueba
 
-| Nombre | Correo | Rol | Departamento | Estado |
-| --- | --- | --- | --- | --- |
-| Ada Administradora | `admin@securedocs.test` | ADMINISTRADOR | TECNOLOGIA | ACTIVO |
-| Gabriela Gerente | `gerente@securedocs.test` | GERENTE | FINANZAS | ACTIVO |
-| Sergio Supervisor | `supervisor@securedocs.test` | SUPERVISOR | RRHH | ACTIVO |
-| Elena Empleada | `empleado@securedocs.test` | EMPLEADO | TECNOLOGIA | ACTIVO |
-| Augusto Auditor | `auditor@securedocs.test` | AUDITOR | FINANZAS | ACTIVO |
-| Ines Invitada | `invitado@securedocs.test` | INVITADO | TECNOLOGIA | ACTIVO |
-| Ivan Inactivo | `inactivo@securedocs.test` | EMPLEADO | RRHH | INACTIVO |
-| Externa Invitada | `externo@partner.test` | INVITADO | Sin departamento | ACTIVO |
-| Susana Suspendida | `suspendido@securedocs.test` | EMPLEADO | TECNOLOGIA | SUSPENDIDO |
+| Nombre | Correo | Rol | Departamento | País | Estado |
+| --- | --- | --- | --- | --- | --- |
+| Ada Administradora | `admin@securedocs.test` | ADMINISTRADOR | TECNOLOGIA | PERU | ACTIVO |
+| Gabriela Gerente | `gerente@securedocs.test` | GERENTE | FINANZAS | PERU | ACTIVO |
+| Sergio Supervisor | `supervisor@securedocs.test` | SUPERVISOR | RRHH | PERU | ACTIVO |
+| Elena Empleada | `empleado@securedocs.test` | EMPLEADO | TECNOLOGIA | PERU | ACTIVO |
+| Augusto Auditor | `auditor@securedocs.test` | AUDITOR | FINANZAS | PERU | ACTIVO |
+| Ines Invitada | `invitado@securedocs.test` | INVITADO | TECNOLOGIA | PERU | ACTIVO |
+| Ivan Inactivo | `inactivo@securedocs.test` | EMPLEADO | RRHH | PERU | INACTIVO |
+| Externa Invitada | `externo@partner.test` | INVITADO | Sin departamento | CHILE | ACTIVO |
+| Susana Suspendida | `suspendido@securedocs.test` | EMPLEADO | TECNOLOGIA | PERU | SUSPENDIDO |
+
+Los cinco documentos de prueba (`Planilla mensual`, `Presupuesto anual`, `Guía de onboarding`, `Evaluaciones internas` y `Manual de herramientas`) tienen `pais = PERU`.
 
 La contraseña común es `SecureDocs-Demo-Only-2026!`, exclusivamente para desarrollo local y nunca reutilizable en producción. Los hashes no se documentan ni se exponen.
