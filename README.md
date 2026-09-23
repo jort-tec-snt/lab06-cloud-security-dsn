@@ -1,6 +1,6 @@
 # SecureDocs
 
-SecureDocs es el proyecto del laboratorio de Cloud Security. Esta etapa incorpora autenticación JWT, revocación persistida, autorización RBAC centralizada y gestión de usuarios sobre la API Express y PostgreSQL. ABAC, CRUD de documentos y frontend quedan para etapas posteriores.
+SecureDocs es el proyecto del laboratorio de Cloud Security. Incluye autenticación JWT, revocación persistida, autorización RBAC centralizada, gestión de usuarios y un motor ABAC centralizado sobre PostgreSQL. El motor ABAC se aplicará al CRUD de documentos en la siguiente etapa; aún no existen rutas de documentos. El frontend queda para una etapa posterior.
 
 ## Tecnologías
 
@@ -15,7 +15,7 @@ SecureDocs es el proyecto del laboratorio de Cloud Security. Esta etapa incorpor
 apps/
 ├── api/
 │   ├── prisma/          # Esquema, migraciones y datos semilla
-│   └── src/             # API Express, autenticación y usuarios
+│   └── src/             # API Express, autenticación, usuarios y autorización
 └── web/                 # Reservado; fuera del alcance de esta etapa
 docs/
 └── architecture/        # Modelo y decisiones de arquitectura
@@ -106,6 +106,10 @@ Los valores de `rol` son `ADMINISTRADOR`, `GERENTE`, `SUPERVISOR`, `EMPLEADO`, `
 
 La [arquitectura RBAC](docs/architecture/rbac.md) contiene el flujo y la matriz completa de permisos. Los [escenarios RBAC](docs/testing/rbac.md) describen las respuestas y la evidencia.
 
+## ABAC
+
+`evaluateAbac(context)` evalúa usuario, documento, acción y entorno contra las ocho políticas activas de PostgreSQL. Devuelve una decisión detallada y todas las evaluaciones aplicables. `authorizeLoadedDocument` prepara su uso después de autenticación, RBAC y carga del documento. No se expone un endpoint ABAC. La ubicación y el dispositivo del adaptador de servidor permanecen desconocidos hasta conectar fuentes verificadas; los valores inyectados se usan solo en pruebas. Consulta la [arquitectura ABAC](docs/architecture/abac.md) y la [matriz de pruebas](docs/testing/abac.md).
+
 ## Scripts de la API
 
 Ejecuta cada script desde la raíz con `npm --prefix apps/api run <script>`:
@@ -118,7 +122,7 @@ Ejecuta cada script desde la raíz con `npm --prefix apps/api run <script>`:
 | `prisma:generate` | Regenera Prisma Client. |
 | `prisma:migrate` | Aplica las migraciones pendientes con `prisma migrate deploy`. |
 | `prisma:seed` | Carga o actualiza el catálogo y los datos demostrativos. |
-| `test` | Ejecuta pruebas HTTP de autenticación y RBAC contra PostgreSQL local ya migrado y poblado. |
+| `test` | Ejecuta pruebas de autenticación, RBAC y ABAC contra PostgreSQL local ya migrado y poblado. |
 
 ## Seguridad de los datos demostrativos
 

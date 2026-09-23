@@ -93,7 +93,7 @@ erDiagram
 - Cada documento tiene un propietario y pertenece a un departamento. Su nivel de confidencialidad utiliza la misma escala de nivel 1 a 5 que el nivel de seguridad del usuario.
 - Una auditoría puede vincularse a un usuario. La relación es opcional para conservar eventos técnicos o históricos aunque el actor no esté disponible.
 - `TokenRevocado` guarda el identificador único (`jti`) de cada JWT cerrado, su usuario y su vencimiento. `authenticate` consulta esta tabla en cada solicitud protegida. No se almacena el JWT completo. Los registros vencidos pueden purgarse posteriormente usando el índice `expires_at`.
-- Las políticas ABAC son un catálogo independiente con código, explicación, estado y configuración JSON. En esta etapa solo se persisten; su evaluación se implementará posteriormente.
+- Las políticas ABAC son un catálogo independiente con código, explicación, estado y configuración JSON. El motor centralizado evalúa los códigos activos; el CRUD de documentos lo invocará en la siguiente etapa.
 
 ## Catálogos semilla
 

@@ -4,6 +4,7 @@ export const publicUserSelect = {
   id: true,
   nombre: true,
   correo: true,
+  departamentoId: true,
   rol: { select: { nombre: true } },
   departamento: { select: { nombre: true } },
   nivelSeguridad: true,
