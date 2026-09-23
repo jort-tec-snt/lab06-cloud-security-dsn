@@ -1,3 +1,3 @@
 # Arquitectura
 
-Marcador inicial para documentar la arquitectura de SecureDocs en las siguientes etapas.
+- [Modelo de persistencia PostgreSQL](database-model.md)

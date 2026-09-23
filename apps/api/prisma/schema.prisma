@@ -1,0 +1,161 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum NivelSeguridad {
+  NIVEL_1
+  NIVEL_2
+  NIVEL_3
+  NIVEL_4
+  NIVEL_5
+}
+
+enum EstadoUsuario {
+  ACTIVO
+  INACTIVO
+  SUSPENDIDO
+}
+
+enum TipoContrato {
+  INDEFINIDO
+  TEMPORAL
+  CONSULTOR
+  EXTERNO
+}
+
+enum EstadoDocumento {
+  PUBLICADO
+  PENDIENTE
+}
+
+enum ResultadoAuditoria {
+  PERMITIDO
+  DENEGADO
+  ERROR
+}
+
+model Departamento {
+  id         String      @id @default(uuid()) @db.Uuid
+  nombre     String      @unique
+  usuarios   Usuario[]
+  documentos Documento[]
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+
+  @@map("departamentos")
+}
+
+model Rol {
+  id          String       @id @default(uuid()) @db.Uuid
+  nombre      String       @unique
+  descripcion String
+  permisos    RolPermiso[]
+  usuarios    Usuario[]
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  @@map("roles")
+}
+
+model Permiso {
+  id          String       @id @default(uuid()) @db.Uuid
+  codigo      String       @unique
+  descripcion String
+  roles       RolPermiso[]
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  @@map("permisos")
+}
+
+model RolPermiso {
+  rolId     String   @db.Uuid @map("rol_id")
+  permisoId String   @db.Uuid @map("permiso_id")
+  rol       Rol      @relation(fields: [rolId], references: [id], onDelete: Cascade)
+  permiso   Permiso  @relation(fields: [permisoId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@id([rolId, permisoId])
+  @@map("roles_permisos")
+}
+
+model Usuario {
+  id              String          @id @default(uuid()) @db.Uuid
+  nombre          String
+  correo          String          @unique
+  passwordHash    String          @map("password_hash")
+  rolId           String          @db.Uuid @map("rol_id")
+  departamentoId  String?         @db.Uuid @map("departamento_id")
+  nivelSeguridad  NivelSeguridad  @map("nivel_seguridad")
+  pais            String
+  tipoContrato    TipoContrato    @map("tipo_contrato")
+  estado          EstadoUsuario   @default(ACTIVO)
+  rol             Rol             @relation(fields: [rolId], references: [id], onDelete: Restrict)
+  departamento    Departamento?   @relation(fields: [departamentoId], references: [id], onDelete: SetNull)
+  documentos      Documento[]     @relation("PropietarioDocumentos")
+  auditorias      Auditoria[]
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  @@index([rolId])
+  @@index([departamentoId])
+  @@map("usuarios")
+}
+
+model Documento {
+  id                     String             @id @default(uuid()) @db.Uuid
+  titulo                 String
+  descripcion            String
+  propietarioId          String             @db.Uuid @map("propietario_id")
+  departamentoId         String             @db.Uuid @map("departamento_id")
+  nivelConfidencialidad  NivelSeguridad     @map("nivel_confidencialidad")
+  estado                 EstadoDocumento
+  pais                   String
+  fechaCreacion          DateTime           @default(now()) @map("fecha_creacion")
+  propietario            Usuario            @relation("PropietarioDocumentos", fields: [propietarioId], references: [id], onDelete: Restrict)
+  departamento           Departamento       @relation(fields: [departamentoId], references: [id], onDelete: Restrict)
+  createdAt              DateTime           @default(now()) @map("created_at")
+  updatedAt              DateTime           @updatedAt @map("updated_at")
+
+  @@index([propietarioId])
+  @@index([departamentoId])
+  @@map("documentos")
+}
+
+model Politica {
+  id            String   @id @default(uuid()) @db.Uuid
+  codigo        String   @unique
+  nombre        String
+  descripcion   String
+  configuracion Json
+  activa        Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("politicas")
+}
+
+model Auditoria {
+  id          String              @id @default(uuid()) @db.Uuid
+  usuarioId   String?             @db.Uuid @map("usuario_id")
+  recurso     String
+  accion      String
+  fecha       DateTime            @default(now())
+  resultado   ResultadoAuditoria
+  motivo      String
+  direccionIp String              @map("direccion_ip")
+  ubicacion   String
+  dispositivo String
+  usuario     Usuario?            @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  @@index([usuarioId])
+  @@index([fecha])
+  @@map("auditorias")
+}

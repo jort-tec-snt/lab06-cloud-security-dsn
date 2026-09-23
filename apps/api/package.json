@@ -1,0 +1,32 @@
+{
+  "name": "@securedocs/api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "API base de SecureDocs",
+  "main": "dist/src/server.js",
+  "scripts": {
+    "dev": "dotenv -e ../../.env -- tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "dotenv -e ../../.env -- node dist/src/server.js",
+    "prisma:generate": "dotenv -e ../../.env -- prisma generate",
+    "prisma:migrate": "dotenv -e ../../.env -- prisma migrate deploy",
+    "prisma:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
+    "test": "npm run build && node --test dist/src/app.test.js"
+  },
+  "dependencies": {
+    "@prisma/client": "6.12.0",
+    "bcryptjs": "3.0.2",
+    "express": "5.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "5.0.3",
+    "@types/node": "24.5.2",
+    "dotenv-cli": "10.0.0",
+    "prisma": "6.12.0",
+    "tsx": "4.20.5",
+    "typescript": "5.9.2"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

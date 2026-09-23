@@ -1,42 +1,89 @@
 # SecureDocs
 
-SecureDocs es el proyecto inicial del laboratorio de Cloud Security. Su objetivo será servir como base para explorar, de forma progresiva, la protección de documentos y los controles de seguridad en una aplicación desplegable en la nube.
-
-Esta etapa contiene únicamente la estructura técnica y la configuración base del proyecto. No incluye lógica de negocio, endpoints, autenticación, autorización, persistencia ni interfaz de usuario.
+SecureDocs es el proyecto del laboratorio de Cloud Security. Esta etapa incorpora la API técnica en Node.js, TypeScript y Express, junto con persistencia PostgreSQL administrada mediante Prisma. Todavía no incluye frontend, autenticación, autorización efectiva ni endpoints de negocio.
 
 ## Tecnologías
 
-- Monorepo simple.
-- Backend: Node.js + Express.
-- Frontend: React + Vite.
-- Base de datos: PostgreSQL.
-- Contenedores: Docker Compose.
+- Node.js 22 o superior, TypeScript y Express 5.
+- PostgreSQL 16.
+- Prisma ORM.
+- Docker Compose para la base de datos local.
 
 ## Estructura
 
 ```text
 apps/
-├── api/              # Backend reservado para Node.js + Express
-└── web/              # Frontend reservado para React + Vite
+├── api/
+│   ├── prisma/          # Esquema, migraciones y datos semilla
+│   └── src/             # API Express y health check
+└── web/                 # Reservado; fuera del alcance de esta etapa
 docs/
-├── architecture/    # Documentación de arquitectura
-├── evidence/         # Evidencias del laboratorio
-└── testing/          # Estrategia y resultados de pruebas
-infra/                # Configuración de infraestructura
-docker-compose.yml    # Servicios base de desarrollo local
+└── architecture/        # Modelo y decisiones de arquitectura
+docker-compose.yml       # PostgreSQL y servicios locales
 ```
 
-## Arranque futuro
+## Instalación local
 
-Cuando se implemente la siguiente etapa, se podrá iniciar la base de servicios con:
+Requisitos: Node.js 22+, npm y Docker con el complemento Compose. Desde la raíz del repositorio, ejecuta en este orden:
 
-```bash
-cp .env.example .env
-docker compose up -d
-```
+1. Copia la configuración local de ejemplo. Sus valores son exclusivamente de desarrollo.
 
-En el estado actual, los servicios `api` y `web` son contenedores base sin aplicación implementada. PostgreSQL se inicia con una configuración local de ejemplo. No se deben añadir secretos reales al repositorio; para entornos reales se utilizará un gestor de secretos apropiado.
+   ```bash
+   cp .env.example .env
+   ```
 
-## Alcance pendiente
+2. Inicia PostgreSQL y espera a que el healthcheck indique que está disponible.
 
-La implementación posterior definirá, de manera separada y documentada, los endpoints, el modelo de datos, la autenticación JWT, los controles RBAC/ABAC, la interfaz web y las pruebas del sistema.
+   ```bash
+   docker compose up -d postgres
+   docker compose ps postgres
+   ```
+
+3. Instala las dependencias de la API.
+
+   ```bash
+   npm --prefix apps/api install
+   ```
+
+4. Aplica la migración versionada.
+
+   ```bash
+   npm --prefix apps/api run prisma:migrate
+   ```
+
+5. Carga los datos semilla. El comando es idempotente y puede repetirse.
+
+   ```bash
+   npm --prefix apps/api run prisma:seed
+   ```
+
+6. Inicia la API y, en otra terminal, consulta el health check.
+
+   ```bash
+   npm --prefix apps/api run dev
+   curl --fail http://localhost:3000/health
+   ```
+
+Una respuesta saludable tiene código HTTP `200`, `status: "ok"` y `database: "connected"`. Si PostgreSQL no está accesible, el endpoint responde HTTP `503` y estado degradado.
+
+## Scripts de la API
+
+Ejecuta cada script desde la raíz con `npm --prefix apps/api run <script>`:
+
+| Script | Uso |
+| --- | --- |
+| `dev` | Inicia la API en modo desarrollo y observa cambios. |
+| `build` | Compila TypeScript en `apps/api/dist`. |
+| `start` | Ejecuta la versión compilada. |
+| `prisma:generate` | Regenera Prisma Client. |
+| `prisma:migrate` | Aplica las migraciones pendientes con `prisma migrate deploy`. |
+| `prisma:seed` | Carga o actualiza el catálogo y los datos demostrativos. |
+| `test` | Ejecuta las pruebas técnicas de la API. |
+
+## Seguridad de los datos demostrativos
+
+Todos los usuarios semilla usan la contraseña `SecureDocs-Demo-Only-2026!`. Es pública, deliberadamente identificada como contraseña de prueba y no debe reutilizarse ni desplegarse en producción. El seed almacena únicamente su hash bcrypt.
+
+El archivo `.env` está ignorado por Git. No agregues credenciales reales al repositorio; en entornos reales utiliza secretos gestionados y una contraseña distinta para PostgreSQL.
+
+El modelo completo, las relaciones y las cuentas de prueba están documentados en [docs/architecture/database-model.md](docs/architecture/database-model.md).
