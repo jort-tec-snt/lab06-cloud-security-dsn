@@ -1,0 +1,42 @@
+services:
+  api:
+    image: node:22-alpine
+    working_dir: /workspace
+    command: ["node", "-e", "setInterval(() => {}, 1000)"]
+    ports:
+      - "${API_PORT:-3000}:3000"
+    volumes:
+      - ./apps/api:/workspace
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-securedocs_dev}:${POSTGRES_PASSWORD:-change_me_local_only}@postgres:5432/${POSTGRES_DB:-securedocs_dev}
+    depends_on:
+      - postgres
+
+  web:
+    image: node:22-alpine
+    working_dir: /workspace
+    command: ["node", "-e", "setInterval(() => {}, 1000)"]
+    ports:
+      - "${WEB_PORT:-5173}:5173"
+    volumes:
+      - ./apps/web:/workspace
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+    depends_on:
+      - api
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-securedocs_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-securedocs_dev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_local_only}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

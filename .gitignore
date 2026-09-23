@@ -1,0 +1,50 @@
+# Dependencias
+node_modules/
+*/node_modules/
+*.tgz
+
+# Variables de entorno y secretos
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+secrets/
+
+# Logs y archivos temporales
+logs/
+*.log
+*.pid
+*.seed
+coverage/
+.cache/
+tmp/
+temp/
+
+# Salidas de build y Vite
+dist/
+build/
+.vite/
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# IDE y sistema operativo
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Archivos de depuración
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
