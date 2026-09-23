@@ -42,7 +42,7 @@ export function issueToken(user: PublicUser): string {
   });
 }
 
-type AuthenticatedRequest = Request & { auth?: { user: PublicUser; token: JwtPayload & z.infer<typeof claimsSchema> } };
+export type AuthenticatedRequest = Request & { auth?: { user: PublicUser; token: JwtPayload & z.infer<typeof claimsSchema> } };
 
 export async function authenticate(request: AuthenticatedRequest, _response: Response, next: NextFunction): Promise<void> {
   try {

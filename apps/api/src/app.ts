@@ -4,6 +4,7 @@ import cors from "cors";
 import { authenticate, login, logout, me } from "./auth";
 import { createUser, listUsers, updateUser } from "./users";
 import { errorHandler } from "./lib/errors";
+import { myPermissions, requireAllPermissions, requirePermission } from "./authorization/rbac";
 
 export type DatabaseCheck = () => Promise<void>;
 
@@ -40,10 +41,15 @@ export function createApp(checkDatabase: DatabaseCheck): Express {
   app.get("/health", getHealthHandler(checkDatabase));
   app.post("/auth/login", login);
   app.get("/auth/me", authenticate, me);
+  app.get("/auth/permissions", authenticate, myPermissions);
   app.post("/auth/logout", authenticate, logout);
-  app.get("/usuarios", authenticate, listUsers);
-  app.post("/usuarios", authenticate, createUser);
-  app.put("/usuarios/:id", authenticate, updateUser);
+  app.get("/usuarios", authenticate, requirePermission("GESTIONAR_USUARIOS"), listUsers);
+  app.post("/usuarios", authenticate, requireAllPermissions(["GESTIONAR_USUARIOS", "ASIGNAR_ROLES"]), createUser);
+  app.put("/usuarios/:id", authenticate, requireAllPermissions(request =>
+    request.body && typeof request.body === "object" && "rol" in request.body
+      ? ["GESTIONAR_USUARIOS", "ASIGNAR_ROLES"]
+      : ["GESTIONAR_USUARIOS"]
+  ), updateUser);
   app.use(errorHandler);
 
   return app;

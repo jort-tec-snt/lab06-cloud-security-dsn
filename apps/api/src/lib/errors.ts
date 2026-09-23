@@ -3,14 +3,14 @@ import { Prisma } from "@prisma/client";
 import { ZodError } from "zod";
 
 export class ApiError extends Error {
-  constructor(public readonly status: number, public readonly code: string, message: string) {
+  constructor(public readonly status: number, public readonly code: string, message: string, public readonly details?: Record<string, unknown>) {
     super(message);
   }
 }
 
 export const errorHandler: ErrorRequestHandler = (error: unknown, _request, response, _next) => {
   if (error instanceof ApiError) {
-    response.status(error.status).json({ error: { code: error.code, message: error.message } });
+    response.status(error.status).json({ error: { code: error.code, message: error.message, ...error.details } });
     return;
   }
   if (error instanceof ZodError) {

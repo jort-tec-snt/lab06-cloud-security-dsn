@@ -1,6 +1,6 @@
 # SecureDocs
 
-SecureDocs es el proyecto del laboratorio de Cloud Security. Esta etapa incorpora autenticación JWT, revocación persistida y gestión de usuarios sobre la API Express y PostgreSQL. El motor RBAC/ABAC y el frontend se implementarán en etapas posteriores.
+SecureDocs es el proyecto del laboratorio de Cloud Security. Esta etapa incorpora autenticación JWT, revocación persistida, autorización RBAC centralizada y gestión de usuarios sobre la API Express y PostgreSQL. ABAC, CRUD de documentos y frontend quedan para etapas posteriores.
 
 ## Tecnologías
 
@@ -87,15 +87,24 @@ curl -sS -X POST http://localhost:3000/auth/login \
   -d '{"correo":"admin@securedocs.test","password":"SecureDocs-Demo-Only-2026!"}'
 ```
 
-El resultado contiene `accessToken`. Envíalo como `Authorization: Bearer <accessToken>` a `GET /auth/me`, `POST /auth/logout` y `/usuarios`. Logout guarda el `jti` revocado en PostgreSQL: el mismo token devuelve `401` desde ese momento.
+El resultado contiene `accessToken`. Envíalo como `Authorization: Bearer <accessToken>` a `GET /auth/me`, `GET /auth/permissions`, `POST /auth/logout` y `/usuarios`. Logout guarda el `jti` revocado en PostgreSQL: el mismo token devuelve `401` desde ese momento. `GET /auth/permissions` devuelve el rol y los códigos de permisos efectivos del usuario autenticado, consultados desde PostgreSQL.
 
 ## Usuarios
 
-`GET /usuarios` lista usuarios; `POST /usuarios` crea uno; `PUT /usuarios/:id` actualiza campos enviados. Los tres endpoints exigen JWT válido. El cuerpo de creación requiere `nombre`, `correo`, `password`, `rol`, `departamento` (nombre o `null`), `nivelSeguridad`, `pais` (nombre de 2 a 80 letras, con espacios simples; se recortan los extremos y se convierte a mayúsculas, por ejemplo `PERU`), `tipoContrato` y `estado`. `PUT` acepta cualquier subconjunto no vacío de esos campos. La contraseña se almacena como hash bcrypt y nunca se devuelve.
+`GET /usuarios` lista usuarios; `POST /usuarios` crea uno; `PUT /usuarios/:id` actualiza campos enviados. Los tres endpoints exigen JWT válido y permisos RBAC actuales:
+
+| Endpoint | Permisos requeridos |
+| --- | --- |
+| `GET /usuarios` | `GESTIONAR_USUARIOS` |
+| `POST /usuarios` | `GESTIONAR_USUARIOS` y `ASIGNAR_ROLES` |
+| `PUT /usuarios/:id` sin `rol` | `GESTIONAR_USUARIOS` |
+| `PUT /usuarios/:id` con `rol` | `GESTIONAR_USUARIOS` y `ASIGNAR_ROLES` |
+
+Si falta un permiso, la API devuelve HTTP `403` con `error.code: "RBAC_DENIED"` y `error.permisoFaltante`. Con las asignaciones semilla, solamente ADMINISTRADOR puede administrar usuarios. El cuerpo de creación requiere `nombre`, `correo`, `password`, `rol`, `departamento` (nombre o `null`), `nivelSeguridad`, `pais` (nombre de 2 a 80 letras, con espacios simples; se recortan los extremos y se convierte a mayúsculas, por ejemplo `PERU`), `tipoContrato` y `estado`. `PUT` acepta cualquier subconjunto no vacío de esos campos. La contraseña se almacena como hash bcrypt y nunca se devuelve.
 
 Los valores de `rol` son `ADMINISTRADOR`, `GERENTE`, `SUPERVISOR`, `EMPLEADO`, `AUDITOR`, `INVITADO`; los departamentos semilla son `FINANZAS`, `RRHH`, `TECNOLOGIA`. `nivelSeguridad` admite `NIVEL_1` a `NIVEL_5`; `tipoContrato`, `INDEFINIDO`, `TEMPORAL`, `CONSULTOR`, `EXTERNO`; `estado`, `ACTIVO`, `INACTIVO`, `SUSPENDIDO`.
 
-**Pendiente para la siguiente etapa RBAC:** aplicar de forma centralizada el permiso `GESTIONAR_USUARIOS` a estos endpoints (restricción de administración). Por ahora cualquier usuario autenticado puede invocarlos. No se implementa autorización por rol en los controladores.
+La [arquitectura RBAC](docs/architecture/rbac.md) contiene el flujo y la matriz completa de permisos. Los [escenarios RBAC](docs/testing/rbac.md) describen las respuestas y la evidencia.
 
 ## Scripts de la API
 
@@ -109,7 +118,7 @@ Ejecuta cada script desde la raíz con `npm --prefix apps/api run <script>`:
 | `prisma:generate` | Regenera Prisma Client. |
 | `prisma:migrate` | Aplica las migraciones pendientes con `prisma migrate deploy`. |
 | `prisma:seed` | Carga o actualiza el catálogo y los datos demostrativos. |
-| `test` | Ejecuta pruebas HTTP de autenticación contra PostgreSQL local ya migrado y poblado. |
+| `test` | Ejecuta pruebas HTTP de autenticación y RBAC contra PostgreSQL local ya migrado y poblado. |
 
 ## Seguridad de los datos demostrativos
 

@@ -11,7 +11,7 @@
     "prisma:generate": "dotenv -e ../../.env -- prisma generate",
     "prisma:migrate": "dotenv -e ../../.env -- prisma migrate deploy",
     "prisma:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
-    "test": "npm run build && dotenv -e ../../.env -- node --test dist/src/*.test.js"
+    "test": "npm run build && dotenv -e ../../.env -- node --test --test-concurrency=1 dist/src/*.test.js"
   },
   "dependencies": {
     "@prisma/client": "6.12.0",
