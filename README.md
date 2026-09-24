@@ -2,6 +2,24 @@
 
 SecureDocs es el proyecto del laboratorio de Cloud Security. Incluye autenticación JWT, revocación persistida, RBAC y ABAC centralizados sobre PostgreSQL, CRUD y aprobación de documentos, auditoría de accesos y una interfaz React conectada a la API.
 
+## Evidencias de funcionamiento
+
+![Interfaz de autenticación de SecureDocs](evidencias/01-login.png)
+
+*Autenticación: valida las credenciales del usuario y establece una sesión segura mediante JWT.*
+
+![Dashboard administrativo de SecureDocs](evidencias/03-dashboard-admin.png)
+
+*Dashboard: resume los datos del usuario autenticado y las funciones disponibles según sus permisos.*
+
+![Inspector de roles y permisos de SecureDocs](evidencias/04-inspector-rbac.png)
+
+*Matriz RBAC: muestra la relación entre los roles del sistema y los permisos asignados a cada uno.*
+
+![Registro de auditoría de SecureDocs](evidencias/02-auditoria.png)
+
+*Auditoría: registra los accesos y permite distinguir las decisiones permitidas, denegadas o con error.*
+
 ## Tecnologías
 
 - Node.js 22 o superior, TypeScript y Express 5.
